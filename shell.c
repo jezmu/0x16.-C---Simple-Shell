@@ -1,40 +1,47 @@
-#include "main.h"
+#include "shell.h"
 /**
- * main - runs the shell program
- *
- * Return: 0 on success
+ * shell - Infinite loop that runs shell
+ * @ac: Arg count
+ * @av: args passed to shell at beginning of prog
+ * @env: Environment
+ * Return: Void
  */
-int main(void)
+void shell(int ac, char **av, char **env)
 {
-	char *fullpathbuffer = NULL, *copy = NULL, *buffer = NULL;
-	char *PATH = NULL;
-	char **av = NULL;
-	int exitstatus = 0;
+	char *line;
+	char **args;
+	int status = 1;
+	char *tmp = NULL;
+	char *er;
+	char *filename;
+	int flow;
 
-	signal(SIGINT, SIG_IGN);
-	PATH = _getenv("PATH");
-	if (PATH == NULL)
-		return (-1);
-	while (1)
-	{
-		av = NULL;
+	er = "Error";
+	do {
 		prompt();
-		buffer = _read();
-		if (*buffer != '\0')
+		line = _getline();
+		args = split_line(line);
+		flow = bridge(args[0], args);
+		if (flow == 2)
 		{
-			av = tokenize(buffer);
-			if (av == NULL)
+			filename = args[0];
+			args[0] = find_path(args[0], tmp, er);
+			if (args[0] == er)
 			{
-				free(buffer);
-				continue;
+				args[0] = search_cwd(filename, er);
+				if (args[0] == filename)
+					write(1, er, 5);
 			}
-			fullpathbuffer = _fullpathbuffer(av, PATH, copy);
-			if (checkbuiltins(av, buffer, exitstatus) != 0)
-				continue;
-			exitstatus = _forkprocess(av, buffer, fullpathbuffer);
 		}
-		else
-			free(buffer);
-	}
-	return (0);
+		if (args[0] != er)
+			status = execute_prog(args, line, env, flow);
+		free(line);
+		free(args);
+	} while (status);
+	if (!ac)
+		(void)ac;
+	if (!av)
+		(void)av;
+	if (!env)
+		(void)env;
 }
